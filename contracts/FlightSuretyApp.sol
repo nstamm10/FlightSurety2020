@@ -177,8 +177,7 @@ contract FlightSuretyApp {
 
 
     // Generate a request for oracles to fetch flight information
-    function fetchFlightStatus
-                        (
+    function fetchFlightStatus (
                             address airline,
                             string flight,
                             uint256 timestamp

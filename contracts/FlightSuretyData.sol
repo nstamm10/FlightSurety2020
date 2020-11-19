@@ -9,8 +9,8 @@ contract FlightSuretyData {
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
 
-    address private contractOwner;                                      // Account used to deploy contract
-    bool private operational = true;                                    // Blocks all state changes throughout the contract if false
+    address private contractOwner;         // Account used to deploy contract
+    bool private operational = true;       // Blocks all state changes throughout the contract if false
 
     uint private funds;
 
@@ -110,6 +110,7 @@ contract FlightSuretyData {
     *
     * When operational mode is disabled, all write transactions except for this one will fail
     */
+<<<<<<< HEAD
     function setOperatingStatus
                             (
                                 bool mode
@@ -117,6 +118,9 @@ contract FlightSuretyData {
                             external
                             requireContractOwner
     {
+=======
+    function setOperatingStatus (bool mode) external requireContractOwner {
+>>>>>>> 35d8c4e9b6624d176ef722e7044dca418a6b4752
         operational = mode;
     }
 
