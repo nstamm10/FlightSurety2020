@@ -396,17 +396,27 @@ contract FlightSuretyData {
                            requireIsRegisteredAirline
                            returns(bool success, uint256 votes)
    {
-     //if less than 4
+
      if (airlineCount < 4) {
        flightSuretyData.airlines[newAirline] = Airline {name, abbreviation};
        airlineCount = airlineCount.add(1);
        return(true, 0);
      } else {
+       voteCounter = 0;
+       bool isDuplicate = false;
+       mapping (address => bool) private hasCalled;
+       mapping (address => hasCalled) private multiCalls;
+       if (multiCalls[newAirline][msg.sender] == true) {
+         isDuplicate = true;
+         break;
+       }
+
+       require(!isDuplicate, "Caller has already called this function");
+       multiCalls[newAirline][msg.sender] = true;
+       voteCounter = voteCounter.add(1);
+       if (voteCounter >= M) {
+         return(true, voteCounter)
+       }
 
      }
-     //if more than 2
-      //multi-party consensus
-
-       return (success, 0);
    }
-}
