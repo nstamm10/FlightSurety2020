@@ -14,13 +14,8 @@ contract FlightSuretyData {
 
     uint private funds;
 
-    struct Airline {
-      bool isRegistered;
-      bool inQueue;
-      string name;
-    }
-
-    mapping(address => Airline) private airlines;
+    mapping(address => Airline) private airlines;             // Mapping for storing employees
+    mapping(address => uint256) private authorizedAirlines;   // Mapping for airlines authorized to participate in Contract
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -37,7 +32,6 @@ contract FlightSuretyData {
                                 public
     {
         contractOwner = msg.sender;
-        airlines[msg.sender] = Airline {true, false, "Default Airline"};
     }
 
     /********************************************************************************************/
@@ -97,9 +91,8 @@ contract FlightSuretyData {
                                   returns(bool)
     {
       if (airlines[msg.sender]) {
-        return airlines[airline].isRegistered;
-      }
-      else {
+        return true;
+      } else {
         return false;
       }
     }
@@ -117,6 +110,11 @@ contract FlightSuretyData {
                             external
                             requireContractOwner
     {
+        require(mode != operational, "New mode must be different from existing mode");
+        require(airlines[msg.sender], "Caller must be registered as an Airline")
+
+        bool isDuplicate = false;
+        
         operational = mode;
     }
 

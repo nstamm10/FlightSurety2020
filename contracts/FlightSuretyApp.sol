@@ -24,8 +24,14 @@ contract FlightSuretyApp {
     uint8 private constant STATUS_CODE_LATE_TECHNICAL = 40;
     uint8 private constant STATUS_CODE_LATE_OTHER = 50;
 
-    address private contractOwner;          // Account used to deploy contract
+    address private contractOwner;                            // Account used to deploy contract
 
+    struct Airline {                                          //Struct to classify an airline and hold relevant info
+      string name;
+      string abbreviation;
+    }
+
+    uint private airlineCount = 0;
     FlightSuretyData flightSuretyData;
 
     struct Flight {
@@ -40,6 +46,9 @@ contract FlightSuretyApp {
 
     //airlines that have been registered or are sitting in the registration queue
     Airline[] private registeredAirlines;
+
+    uint constant M = 4;                                    //constant M refers to number of airlines needed to use multi-party consensus
+    address[] multiCalls = new address[](0);                //array of addresses that have called the registerFlight function
 
 
     /********************************************************************************************/
@@ -109,21 +118,13 @@ contract FlightSuretyApp {
                                   address dataAddress;
                                 )
                                 public
-                                canFund
-                                registrationChange
+
+
     {
         contractOwner = msg.sender;
-
         flightSuretyData = FlightSuretyData(dataAddress);
-
-        registeredAirlines.push(
-          Airline {
-            true,
-            false,
-            msg.sender,
-            "Default Airline",
-          })
-
+        flightSuretyData.airlines[msg.sender] = Airline {"Default Airline", "ABC"}
+        airlineCount = 1;
     }
 
     /********************************************************************************************/
@@ -142,7 +143,13 @@ contract FlightSuretyApp {
     /*                                     SMART CONTRACT FUNCTIONS                             */
     /********************************************************************************************/
 
+    /**
+     * @dev Approve an airline to register to the FlightSurety Program
+     *
+     */
+    function approveNewAirline(Airline existingAirline, Airline newAirline) {
 
+    }
 
 
 
@@ -381,16 +388,22 @@ contract FlightSuretyData {
    */
    function registerAirline
                            (
-                            address newAirline,
-                            string name
+                            string name,
+                            string abbreviation,
+                            address newAirline
                            )
                            external
                            requireIsRegisteredAirline
                            returns(bool success, uint256 votes)
    {
      //if less than 4
-     if ()
-      flightSuretyData.airlines[newAirline] = Airline {false, true, name};
+     if (airlineCount < 4) {
+       flightSuretyData.airlines[newAirline] = Airline {name, abbreviation};
+       airlineCount = airlineCount.add(1);
+       return(true, 0);
+     } else {
+
+     }
      //if more than 2
       //multi-party consensus
 
