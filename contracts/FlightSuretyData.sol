@@ -14,9 +14,16 @@ contract FlightSuretyData {
 
     uint private funds;
 
+    struct Insurance {
+        address owner;
+        bytes32 key;
+        uint256 amount;
+    }
+
     mapping(address => Airline) private airlines;             // Mapping for storing employees
     mapping(address => uint256) private authorizedAirlines; // Mapping for airlines authorized
-
+    Insurance[] private insurance;
+    mapping(address => uint256) private credit;
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
     /********************************************************************************************/
@@ -110,23 +117,37 @@ contract FlightSuretyData {
     *
     */
     function registerAirline () external pure {
-        
+
     }
 
 
    /**
     * @dev Buy insurance for a flight
-    *
+    * I'm implementing this as a mapping to keep track of who owns insurance on which flightSuretyApp
+    * I created a new struct and mapping to handle this functionality
+    * I think it should work
     */
-    function buy () external payable {
-
+    function buy (address airline, string memory flight, uint256 timestamp, uint256 amount) external payable {
+        require(msg.value == amount, "Transaction is suspect")
+        if (amount > 1) {
+            uint256 credit = amount - 1;
+            creditInsurees(msg.sender, credit);
+        }
+        bytes32 key = getFlightKey(airline, flight, timestamp);
+        Insurance newInsurance = Insurance(msg.sender, key, amount);
+        insurance.push(newInsurance);
     }
 
     /**
      *  @dev Credits payouts to insurees
     */
-    function creditInsurees ( ) external pure {
-
+    function creditInsurees (address airline, string memory flight, uint256 timestamp) external pure {
+        flightKey = getFlightKey(airline, flight, timestamp);
+        for (uint i=0; i < insurance.length; i++) {
+            if (insurance[i].key == flightKey) {
+                credit[insurance[i].owner] = mul(insurance[i].amount, 1.5)
+            }
+        }
     }
 
 
@@ -135,7 +156,10 @@ contract FlightSuretyData {
      *
     */
     function pay ( ) external pure {
-
+        require(credit[msg.sender] > 0, "Caller does not have any credit")
+        uint256 amountToReturn = credit[msg.sender];
+        credit[msg.sender] = 0;
+        msg.sender.transfer(amountToReturn);
     }
 
    /**
