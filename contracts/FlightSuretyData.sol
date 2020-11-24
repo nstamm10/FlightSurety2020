@@ -20,17 +20,26 @@ contract FlightSuretyData {
         uint256 amount;
     }
 
+    struct Airline {                                          //Struct to classify an airline and hold relevant info
+      string name;
+      string abbreviation;
+    }
 
-    mapping (address => bool) private hasCalled;
-    mapping (address => hasCalled) private multiCalls;
+    uint constant M = 4;                                    //constant M refers to number of airlines needed to use multi-party consensus
+
+
+    uint private registeredAirlineCount = 0;
+    mapping (address => mapping(address => bool)) private multiCalls;
     address[] multiCallsArray = new address[](0);                //array of addresses that have called the registerFlight function
 
 
-    mapping(address => Airline) private airlines;             // Mapping for storing employees. Question: Does this contract have to inheret from the app contract in order to use a mapping that maps to an Airline type? (airline type is stored in the app contract, maybe this will have to change)
-    mapping(address => uint256) private authorizedAirlines; // Mapping for airlines authorized
+    mapping(address => Airline) public airlines;             // Mapping for storing employees. Question: Does this contract have to inheret from the app contract in order to use a mapping that maps to an Airline type? (airline type is stored in the app contract, maybe this will have to change)
+    mapping(address => uint256) private authorizedAirlines;   // Mapping for airlines authorized
     Insurance[] private insurance;
     mapping(address => uint256) private credit;
     uint private totalFunding = 0; //total funding is the bank for the insurance program. When a new airline joins, this var increases by 10 ether
+
+    mapping(address => uint256) private voteCounter;
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
     /********************************************************************************************/
@@ -59,6 +68,15 @@ contract FlightSuretyData {
     modifier requireIsOperational() {
         require(operational, "Contract is currently not operational");
         _;  // All modifiers require an "_" which indicates where the function body will be added
+    }
+
+    /**
+    * @dev Modifier that requires the msg.sender to be a registered airline
+    */
+    modifier requireIsRegisteredAirline()
+    {
+        require(isRegisteredAirline() == true, "Airline is not registered");
+        _;
     }
 
     /**
@@ -109,7 +127,7 @@ contract FlightSuretyData {
     * @return A bool that is the current registration status
     */
     function isRegisteredAirline() public view returns(bool) {
-        if (airlines[msg.sender]) {
+        if (authorizedAirlines[msg.sender] == 1) {
             return true;
         } else {
             return false;
@@ -133,6 +151,34 @@ contract FlightSuretyData {
         operational = mode;
     }
 
+    /**
+    * @dev Get airline name
+    *
+    * @return the name field in the Airline struct, helding in the airlines mapping
+    */
+    function getAirlineName() public view returns(string) {
+        return airlines[msg.sender].name;
+    }
+
+    /**
+    * @dev Get airline abbreviation
+    *
+    * @return the abbreviation field in the Airline struct, helding in the airlines mapping
+    */
+    function getAirlineAbreviation() public view returns(string) {
+        return airlines[msg.sender].abbreviation;
+    }
+
+    /**
+    * @dev Get airline count
+    *
+    * @return the count of registered airlines in the system (not authorized)
+    */
+    function getRegisteredAirlineCount() public view returns(uint) {
+        return registeredAirlineCount;
+    }
+
+
     /********************************************************************************************/
     /*                                     SMART CONTRACT FUNCTIONS                             */
     /********************************************************************************************/
@@ -142,14 +188,27 @@ contract FlightSuretyData {
     *      Can only be called from FlightSuretyApp contract
     *
     */
-    function registerAirline () external {
-      if (airlineCount < 4) {
-        flightSuretyData.airlines[newAirline].name = name;
-        flightSuretyData.airlines[newAirline].abbreviation = abbreviation;
-        airlineCount = airlineCount.add(1);
+    function registerAirline
+                                (
+                                    string name,
+                                    string abbreviation,
+                                    address newAirline
+                                )
+                                external
+                                requireIsRegisteredAirline
+                                returns
+                                (
+                                    bool success,
+                                    uint256 votes
+                                )
+    {
+      if (registeredAirlineCount < 4) {
+        airlines[newAirline].name = name;
+        airlines[newAirline].abbreviation = abbreviation;
+        registeredAirlineCount = registeredAirlineCount.add(1);
         return(true, 0);
       } else {
-        voteCounter = 0;
+
         bool isDuplicate = false;
 
         if (multiCalls[newAirline][msg.sender] == true) {
@@ -159,13 +218,13 @@ contract FlightSuretyData {
 
         require(!isDuplicate, "Caller has already called this function");
         multiCalls[newAirline][msg.sender] = true;
-        voteCounter = voteCounter.add(1);
-        if (voteCounter >= M) {
-          flightSuretyData.airlines[newAirline].name = name;
-          flightSuretyData.airlines[newAirline].abbreviation = abbreviation;
-          return(true, voteCounter);
+        voteCounter[newAirline] = voteCounter[newAirline].add(1);
+        if (voteCounter[newAirline] >= M) {
+          airlines[newAirline].name = name;
+          airlines[newAirline].abbreviation = abbreviation;
+          return(true, voteCounter[newAirline]);
         } else {
-          return(false, voteCounter);
+          return(false, voteCounter[newAirline]);
         }
 
       }
@@ -177,8 +236,8 @@ contract FlightSuretyData {
     * I'm implementing this as a mapping to keep track of who owns insurance on which flightSuretyApp
     * I created a new struct and mapping to handle this functionality
     * I think it should work
-    */
-    function buy (address airline, string memory flight, uint256 timestamp, uint256 amount) external payable {
+
+    function buy (address airline, string flight, uint256 timestamp, uint256 amount) external payable {
         require(msg.value == amount, "Transaction is suspect");
         if (amount > 1) {
             uint256 creditAmount = amount - 1;
@@ -187,12 +246,12 @@ contract FlightSuretyData {
         bytes32 key = getFlightKey(airline, flight, timestamp);
         Insurance newInsurance = Insurance(msg.sender, key, amount);
         insurance.push(newInsurance);
-    }
+    }*/
 
     /**
      *  @dev Credits payouts to insurees
-    */
-    function creditInsurees (address airline, string memory flight, uint256 timestamp) external pure {
+
+    function creditInsurees (address airline, string flight, uint256 timestamp) external pure {
         flightKey = getFlightKey(airline, flight, timestamp);
         for (uint i=0; i < insurance.length; i++) {
             if (insurance[i].key == flightKey) {
@@ -205,13 +264,13 @@ contract FlightSuretyData {
     /**
      *  @dev Transfers eligible payout funds to insuree
      *
-    */
+
     function pay ( ) external pure {
         require(credit[msg.sender] > 0, "Caller does not have any credit");
         uint256 amountToReturn = credit[msg.sender];
         credit[msg.sender] = 0;
         msg.sender.transfer(amountToReturn);
-    }
+    }*/
 
    /**
     * @dev Initial funding for the insurance. Unless there are too many delayed flights
@@ -220,6 +279,7 @@ contract FlightSuretyData {
     */
     function fund () public canFund registrationChange payable {
       totalFunding = totalFunding.add(10 ether); // does this make the 10 ether come out of the msg.value?
+      authorizedAirlines[msg.sender] = 1;
 
 
     }

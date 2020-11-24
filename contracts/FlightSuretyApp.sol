@@ -26,14 +26,7 @@ contract FlightSuretyApp {
 
     address private contractOwner;                            // Account used to deploy contract
 
-    struct Airline {                                          //Struct to classify an airline and hold relevant info
-      string name;
-      string abbreviation;
-    }
 
-
-
-    uint private airlineCount = 0;
     FlightSuretyData flightSuretyData;
 
     struct Flight {
@@ -44,12 +37,6 @@ contract FlightSuretyApp {
     }
     mapping(bytes32 => Flight) private flights;
 
-
-
-    //airlines that have been registered or are sitting in the registration queue
-    Airline[] private registeredAirlines;
-
-    uint constant M = 4;                                    //constant M refers to number of airlines needed to use multi-party consensus
 
 
     /********************************************************************************************/
@@ -100,14 +87,7 @@ contract FlightSuretyApp {
           _;
     }
 
-    /**
-    * @dev Modifier that requires the msg.sender to be a registered airline
-    */
-    modifier requireIsRegisteredAirline()
-    {
-        require(flightSuretyData.isRegisteredAirline() == true, "Airline is not registered");
-        _;
-    }
+
 
     /********************************************************************************************/
     /*                                       CONSTRUCTOR                                        */
@@ -127,9 +107,9 @@ contract FlightSuretyApp {
     {
         contractOwner = msg.sender;
         flightSuretyData = FlightSuretyData(dataAddress);
-        flightSuretyData.airlines[msg.sender].name = "Default Airline";
-        flightSuretyData.airlines[msg.sender].abbreviation = "ABC"; //Question: Do we want the airlines data to be stored in the data contract? This means that the airlines will be saved even if the contract is updated. In this case, we should create a remove airline function.
-        airlineCount = airlineCount.add(1); //Does the first airline have to fund first in order to be completely authorized? I think yes.
+        flightSuretyData.getAirlineName() = "Default Airline";
+        flightSuretyData.getAirlineAbreviation() = "ABC"; //Question: Do we want the airlines data to be stored in the data contract? This means that the airlines will be saved even if the contract is updated. In this case, we should create a remove airline function.
+        flightSuretyData.getRegisteredAirlineCount() = flightSuretyData.getRegisteredAirlineCount.add(1); //Does the first airline have to fund first in order to be completely authorized? I think yes.
 
         //fund function on msg.sender
     }
@@ -154,9 +134,9 @@ contract FlightSuretyApp {
      * @dev Approve an airline to register to the FlightSurety Program
      *
      */
-    function approveNewAirline(Airline existingAirline, Airline newAirline) {
+//    function approveNewAirline(flightSuretyData.Airline existingAirline, flightSuretyData.Airline newAirline) {
 
-    }
+//    }
 
 
 
@@ -394,5 +374,30 @@ contract FlightSuretyData {
    *
    */
    function registerAirline (string name, string abbreviation, address newAirline) external
-                            requireIsRegisteredAirline returns(bool success, uint256 votes);
+                             returns(bool success, uint256 votes);
+
+   /**
+   * @dev Get airline name
+   *
+   * @return the name field in the Airline struct, helding in the airlines mapping
+   */
+   function getAirlineName() public view returns(string);
+
+   /**
+   * @dev Get airline abbreviation
+   *
+   * @return the abbreviation field in the Airline struct, helding in the airlines mapping
+   */
+   function getAirlineAbreviation() public view returns(string);
+
+   /**
+   * @dev Get airline count
+   *
+   * @return the count of registered airlines in the system (not authorized)
+   */
+   function getRegisteredAirlineCount() public view returns(uint);
+
+
+
+
 }
