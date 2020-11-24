@@ -31,6 +31,8 @@ contract FlightSuretyApp {
       string abbreviation;
     }
 
+
+
     uint private airlineCount = 0;
     FlightSuretyData flightSuretyData;
 
@@ -48,7 +50,6 @@ contract FlightSuretyApp {
     Airline[] private registeredAirlines;
 
     uint constant M = 4;                                    //constant M refers to number of airlines needed to use multi-party consensus
-    address[] multiCalls = new address[](0);                //array of addresses that have called the registerFlight function
 
 
     /********************************************************************************************/
@@ -84,7 +85,8 @@ contract FlightSuretyApp {
     */
     modifier canFund()
     {
-      require(msg.value >= 10 ether, "Caller does not have funds to support registration.")
+      require(msg.value >= 10 ether, "Caller does not have funds to support registration.");
+      _;
     }
 
     /**
@@ -95,6 +97,7 @@ contract FlightSuretyApp {
           uint _price = 10 ether;
           uint amountToReturn = msg.value - _price;
           msg.sender.transfer(amountToReturn);
+          _;
     }
 
     /**
@@ -102,7 +105,8 @@ contract FlightSuretyApp {
     */
     modifier requireIsRegisteredAirline()
     {
-        require(flightSuretyData.isRegisteredAirline(airline) == true, "Airline is not registered");
+        require(flightSuretyData.isRegisteredAirline() == true, "Airline is not registered");
+        _;
     }
 
     /********************************************************************************************/
@@ -115,7 +119,7 @@ contract FlightSuretyApp {
     */
     constructor
                                 (
-                                  address dataAddress;
+                                  address dataAddress
                                 )
                                 public
 
@@ -123,8 +127,11 @@ contract FlightSuretyApp {
     {
         contractOwner = msg.sender;
         flightSuretyData = FlightSuretyData(dataAddress);
-        flightSuretyData.airlines[msg.sender] = Airline {"Default Airline", "ABC"}
-        airlineCount = 1;
+        flightSuretyData.airlines[msg.sender].name = "Default Airline";
+        flightSuretyData.airlines[msg.sender].abbreviation = "ABC"; //Question: Do we want the airlines data to be stored in the data contract? This means that the airlines will be saved even if the contract is updated. In this case, we should create a remove airline function.
+        airlineCount = airlineCount.add(1); //Does the first airline have to fund first in order to be completely authorized? I think yes.
+
+        //fund function on msg.sender
     }
 
     /********************************************************************************************/
@@ -386,37 +393,6 @@ contract FlightSuretyData {
    * @dev Add an airline to the registration queue if there are less than 4 existing airlines registered
    *
    */
-   function registerAirline
-                           (
-                            string name,
-                            string abbreviation,
-                            address newAirline
-                           )
-                           external
-                           requireIsRegisteredAirline
-                           returns(bool success, uint256 votes)
-   {
-
-     if (airlineCount < 4) {
-       flightSuretyData.airlines[newAirline] = Airline {name, abbreviation};
-       airlineCount = airlineCount.add(1);
-       return(true, 0);
-     } else {
-       voteCounter = 0;
-       bool isDuplicate = false;
-       mapping (address => bool) private hasCalled;
-       mapping (address => hasCalled) private multiCalls;
-       if (multiCalls[newAirline][msg.sender] == true) {
-         isDuplicate = true;
-         break;
-       }
-
-       require(!isDuplicate, "Caller has already called this function");
-       multiCalls[newAirline][msg.sender] = true;
-       voteCounter = voteCounter.add(1);
-       if (voteCounter >= M) {
-         return(true, voteCounter)
-       }
-
-     }
-   }
+   function registerAirline (string name, string abbreviation, address newAirline) external
+                            requireIsRegisteredAirline returns(bool success, uint256 votes);
+}

@@ -5,7 +5,7 @@ import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
 contract FlightSuretyData {
     using SafeMath for uint256;
 
-    /********************************************************************************************/
+    /*****************************************f***************************************************/
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
 
@@ -20,10 +20,17 @@ contract FlightSuretyData {
         uint256 amount;
     }
 
-    mapping(address => Airline) private airlines;             // Mapping for storing employees
+
+    mapping (address => bool) private hasCalled;
+    mapping (address => hasCalled) private multiCalls;
+    address[] multiCallsArray = new address[](0);                //array of addresses that have called the registerFlight function
+
+
+    mapping(address => Airline) private airlines;             // Mapping for storing employees. Question: Does this contract have to inheret from the app contract in order to use a mapping that maps to an Airline type? (airline type is stored in the app contract, maybe this will have to change)
     mapping(address => uint256) private authorizedAirlines; // Mapping for airlines authorized
     Insurance[] private insurance;
     mapping(address => uint256) private credit;
+    uint private totalFunding = 0; //total funding is the bank for the insurance program. When a new airline joins, this var increases by 10 ether
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
     /********************************************************************************************/
@@ -61,6 +68,25 @@ contract FlightSuretyData {
         require(msg.sender == contractOwner, "Caller is not contract owner");
         _;
     }
+    /**
+    * @dev Modifier that requires the msg.value to be at least 10 ether in order to fund the contract
+    */
+    modifier canFund() {
+      require(msg.value >= 10 ether, "Caller does not have funds to support registration.");
+      _;
+    }
+    /**
+    * @dev Modifier that distributes change back to the msg.sender upon registration
+    */
+    modifier registrationChange()  {
+      uint _price = 10 ether;
+      uint amountToReturn = msg.value - _price;
+      msg.sender.transfer(amountToReturn);
+      _;
+    }
+
+
+
 
 
 
@@ -100,7 +126,7 @@ contract FlightSuretyData {
     //Questions on this...
     function setOperatingStatus (bool mode) external requireContractOwner {
         require(mode != operational, "New mode must be different from existing mode");
-        require(airlines[msg.sender], "Caller must be registered as an Airline")
+        require(airlines[msg.sender], "Caller must be registered as an Airline");
 
         bool isDuplicate = false;
 
@@ -116,8 +142,33 @@ contract FlightSuretyData {
     *      Can only be called from FlightSuretyApp contract
     *
     */
-    function registerAirline () external pure {
+    function registerAirline () external {
+      if (airlineCount < 4) {
+        flightSuretyData.airlines[newAirline].name = name;
+        flightSuretyData.airlines[newAirline].abbreviation = abbreviation;
+        airlineCount = airlineCount.add(1);
+        return(true, 0);
+      } else {
+        voteCounter = 0;
+        bool isDuplicate = false;
 
+        if (multiCalls[newAirline][msg.sender] == true) {
+          isDuplicate = true;
+          //break;
+        }
+
+        require(!isDuplicate, "Caller has already called this function");
+        multiCalls[newAirline][msg.sender] = true;
+        voteCounter = voteCounter.add(1);
+        if (voteCounter >= M) {
+          flightSuretyData.airlines[newAirline].name = name;
+          flightSuretyData.airlines[newAirline].abbreviation = abbreviation;
+          return(true, voteCounter);
+        } else {
+          return(false, voteCounter);
+        }
+
+      }
     }
 
 
@@ -128,10 +179,10 @@ contract FlightSuretyData {
     * I think it should work
     */
     function buy (address airline, string memory flight, uint256 timestamp, uint256 amount) external payable {
-        require(msg.value == amount, "Transaction is suspect")
+        require(msg.value == amount, "Transaction is suspect");
         if (amount > 1) {
-            uint256 credit = amount - 1;
-            creditInsurees(msg.sender, credit);
+            uint256 creditAmount = amount - 1;
+            creditInsurees(msg.sender, creditAmount);
         }
         bytes32 key = getFlightKey(airline, flight, timestamp);
         Insurance newInsurance = Insurance(msg.sender, key, amount);
@@ -145,7 +196,7 @@ contract FlightSuretyData {
         flightKey = getFlightKey(airline, flight, timestamp);
         for (uint i=0; i < insurance.length; i++) {
             if (insurance[i].key == flightKey) {
-                credit[insurance[i].owner] = mul(insurance[i].amount, 1.5)
+                credit[insurance[i].owner] = mul(insurance[i].amount, 1.5);
             }
         }
     }
@@ -156,7 +207,7 @@ contract FlightSuretyData {
      *
     */
     function pay ( ) external pure {
-        require(credit[msg.sender] > 0, "Caller does not have any credit")
+        require(credit[msg.sender] > 0, "Caller does not have any credit");
         uint256 amountToReturn = credit[msg.sender];
         credit[msg.sender] = 0;
         msg.sender.transfer(amountToReturn);
@@ -167,7 +218,9 @@ contract FlightSuretyData {
     *      resulting in insurance payouts, the contract should be self-sustaining
     *
     */
-    function fund ( ) public payable {
+    function fund () public canFund registrationChange payable {
+      totalFunding = totalFunding.add(10 ether); // does this make the 10 ether come out of the msg.value?
+
 
     }
 
