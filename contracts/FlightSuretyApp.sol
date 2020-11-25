@@ -8,8 +8,6 @@ import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./FlightSuretyData.sol";
 
 
-
-
 /************************************************** */
 /* FlightSurety Smart Contract                      */
 /************************************************** */
@@ -111,7 +109,7 @@ contract FlightSuretyApp {
 
     {
         contractOwner = msg.sender;
-        flightSuretyData = FlightSuretyData(dataAddress);
+        flightSuretyData = FlightSuretyData(dataAddress); //what does this line of code do
         flightSuretyData.registerInitialAirline(newAirline1);
         //fund function on msg.sender
     }
