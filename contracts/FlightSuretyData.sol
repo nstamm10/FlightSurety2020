@@ -5,7 +5,7 @@ import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
 contract FlightSuretyData {
     using SafeMath for uint256;
 
-    /*****************************************f***************************************************/
+    /********************************************************************************************/
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
 
@@ -23,6 +23,8 @@ contract FlightSuretyData {
     struct Airline {                                          //Struct to classify an airline and hold relevant info
       string name;
       string abbreviation;
+      bool isRegistered;
+      bool isAuthorized;
     }
 
     uint constant M = 4;                                    //constant M refers to number of airlines needed to use multi-party consensus
@@ -40,6 +42,7 @@ contract FlightSuretyData {
     uint private totalFunding = 0; //total funding is the bank for the insurance program. When a new airline joins, this var increases by 10 ether
 
     mapping(address => uint256) private voteCounter;
+    mapping(address => bool) private authorizedCallers;
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
     /********************************************************************************************/
@@ -122,6 +125,16 @@ contract FlightSuretyData {
     }
 
     /**
+    * @dev Authorize app contracts to access data contract
+    *
+    */
+
+    function authorizeCaller(address contractAddress) external requireContractOwner {
+        authorizedCallers[contractAddress] = true;
+    }
+
+
+    /**
     * @dev Get registration status of an airline
     *
     * @return A bool that is the current registration status
@@ -139,7 +152,7 @@ contract FlightSuretyData {
     * @dev Sets contract operations on/off
     *
     * When operational mode is disabled, all write transactions except for this one will fail
-    */
+
 
     //Questions on this...
     function setOperatingStatus (bool mode) external requireContractOwner {
@@ -156,9 +169,9 @@ contract FlightSuretyData {
     *
     * @return the name field in the Airline struct, helding in the airlines mapping
     */
-    function getAirlineName() public view returns(string) {
-        return airlines[msg.sender].name;
-    }
+//    function getAirline(address addy) public view returns(Airline) {
+  //      return airlines[addy];
+    //}
 
     /**
     * @dev Get airline abbreviation
@@ -183,52 +196,21 @@ contract FlightSuretyData {
     /*                                     SMART CONTRACT FUNCTIONS                             */
     /********************************************************************************************/
 
-   /**
-    * @dev Add an airline to the registration queue
-    *      Can only be called from FlightSuretyApp contract
-    *
-    */
-    function registerAirline
-                                (
-                                    string name,
-                                    string abbreviation,
-                                    address newAirline
-                                )
-                                external
-                                requireIsRegisteredAirline
-                                returns
-                                (
-                                    bool success,
-                                    uint256 votes
-                                )
-    {
-      if (registeredAirlineCount < 4) {
-        airlines[newAirline].name = name;
-        airlines[newAirline].abbreviation = abbreviation;
-        registeredAirlineCount = registeredAirlineCount.add(1);
-        return(true, 0);
-      } else {
+    /**
+     * @dev register initial airline
+     */
+     function registerInitialAirline(address airlineAccount) external {
+        //declare the new Airline newAirline1 in memory
+        Airline memory newAirline1;
+        //Use the . notation to access members of the Struct "Airline"
+        newAirline1.name = "Default Airline";
+        newAirline1.abbreviation = "ABC";
+        newAirline1.isRegistered = true;
+        newAirline1.isAuthorized = false;
+        //Add Airline to mapping that stores registered Airlines
+        airlines[airlineAccount] = newAirline1;
+     }
 
-        bool isDuplicate = false;
-
-        if (multiCalls[newAirline][msg.sender] == true) {
-          isDuplicate = true;
-          //break;
-        }
-
-        require(!isDuplicate, "Caller has already called this function");
-        multiCalls[newAirline][msg.sender] = true;
-        voteCounter[newAirline] = voteCounter[newAirline].add(1);
-        if (voteCounter[newAirline] >= M) {
-          airlines[newAirline].name = name;
-          airlines[newAirline].abbreviation = abbreviation;
-          return(true, voteCounter[newAirline]);
-        } else {
-          return(false, voteCounter[newAirline]);
-        }
-
-      }
-    }
 
 
    /**

@@ -5,6 +5,10 @@ pragma solidity ^0.4.25;
 // More info: https://www.nccgroup.trust/us/about-us/newsroom-and-events/blog/2018/november/smart-contract-insecurity-bad-arithmetic/
 
 import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "./FlightSuretyData.sol";
+
+
+
 
 /************************************************** */
 /* FlightSurety Smart Contract                      */
@@ -99,7 +103,8 @@ contract FlightSuretyApp {
     */
     constructor
                                 (
-                                  address dataAddress
+                                  address dataAddress,
+                                  address newAirline1
                                 )
                                 public
 
@@ -107,10 +112,7 @@ contract FlightSuretyApp {
     {
         contractOwner = msg.sender;
         flightSuretyData = FlightSuretyData(dataAddress);
-        flightSuretyData.getAirlineName() = "Default Airline";
-        flightSuretyData.getAirlineAbreviation() = "ABC"; //Question: Do we want the airlines data to be stored in the data contract? This means that the airlines will be saved even if the contract is updated. In this case, we should create a remove airline function.
-        flightSuretyData.getRegisteredAirlineCount() = flightSuretyData.getRegisteredAirlineCount.add(1); //Does the first airline have to fund first in order to be completely authorized? I think yes.
-
+        flightSuretyData.registerInitialAirline(newAirline1);
         //fund function on msg.sender
     }
 
@@ -137,13 +139,58 @@ contract FlightSuretyApp {
 //    function approveNewAirline(flightSuretyData.Airline existingAirline, flightSuretyData.Airline newAirline) {
 
 //    }
+/**
+ * @dev Add an airline to the registration queue
+ *      Can only be called from FlightSuretyApp contract
+ *
 
+ function registerAirline
+                             (
+                                 string name,
+                                 string abbreviation,
+                                 address newAirline
+                             )
+                             external
+                             requireIsRegisteredAirline
+                             returns
+                             (
+                                 bool success,
+                                 uint256 votes
+                             )
+ {
+     if (registeredAirlineCount < 4) {
+         airlines[newAirline].name = name;
+         airlines[newAirline].abbreviation = abbreviation;
+         registeredAirlineCount = registeredAirlineCount.add(1);
+         return(true, 0);
+     } else {
 
+         bool isDuplicate = false;
+
+         if (multiCalls[newAirline][msg.sender] == true) {
+           isDuplicate = true;
+         }
+
+         require(!isDuplicate, "Caller has already called this function");
+         multiCalls[newAirline][msg.sender] = true;
+         voteCounter[newAirline] = voteCounter[newAirline].add(1);
+         if (voteCounter[newAirline] >= M) {
+           airlines[newAirline].name = name;
+           airlines[newAirline].abbreviation = abbreviation;
+           return(true, voteCounter[newAirline]);
+         } else {
+           return(false, voteCounter[newAirline]);
+         }
+
+     }
+ }
+
+   */
 
    /**
     * @dev Register a future flight for insuring.
     *
-    */
+
     function registerFlight
                                 (
                                 )
@@ -156,7 +203,7 @@ contract FlightSuretyApp {
    /**
     * @dev Called after oracle has updated flight status
     *
-    */
+
     function processFlightStatus
                                 (
                                     address airline,
@@ -361,18 +408,18 @@ contract FlightSuretyApp {
     }
 
 // endregion
-
+*/
 }
 
 /********************************************************************************************/
 /*                                     DATA CONTRACT INTERFACE                              */
 /********************************************************************************************/
-
+/*
 contract FlightSuretyData {
   /**
    * @dev Add an airline to the registration queue if there are less than 4 existing airlines registered
    *
-   */
+
    function registerAirline (string name, string abbreviation, address newAirline) external
                              returns(bool success, uint256 votes);
 
@@ -380,24 +427,23 @@ contract FlightSuretyData {
    * @dev Get airline name
    *
    * @return the name field in the Airline struct, helding in the airlines mapping
-   */
+
    function getAirlineName() public view returns(string);
 
    /**
    * @dev Get airline abbreviation
    *
    * @return the abbreviation field in the Airline struct, helding in the airlines mapping
-   */
+
    function getAirlineAbreviation() public view returns(string);
 
    /**
    * @dev Get airline count
    *
    * @return the count of registered airlines in the system (not authorized)
-   */
+
    function getRegisteredAirlineCount() public view returns(uint);
 
 
-
-
-}
+*/
+//}
